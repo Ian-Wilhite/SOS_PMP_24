@@ -27,7 +27,7 @@ def clean_up_data(dataframes, council_data):
 def consolidate_data(dataframes, council_data): # dataframe of consolidated values
     # Combine all DataFrames into a single DataFrame using pd.concat()
     combined_df = pd.concat(dataframes, ignore_index=True)
-
+    combined_df.to_csv('combined.csv')
 
 
 
@@ -66,18 +66,15 @@ def consolidate_data(dataframes, council_data): # dataframe of consolidated valu
                 combined_df[new_name] = combined_df[column]  # Just assign 2019 data to the new column
             combined_df.drop(column, axis=1, inplace=True)  # Drop the original 2019 column
 
-    # Now handle the remaining years (2020 onwards), combining with the previous year's data
-    for i in range(1, len(years)):  # Start at 1 to handle 2020 and onwards
+    for i in range(1, len(years)):  # Start at year 2020 and go onwards
         for column in combined_df.columns:
             if years[i] in column:
-                new_name = column.replace(years[i], '')
-                if new_name not in combined_df.columns:
-                    previous_column = column.replace(years[i], years[i - 1])
-                    
-                    if previous_column in combined_df.columns:  # Ensure previous year's column exists
-                        combined_df[new_name] = combined_df[column].combine_first(combined_df[previous_column])
-                        
+                new_name = column.replace(years[i], '')  # Remove the year from the column name
+                combined_df[new_name] = combined_df[new_name].combine_first(combined_df[column])
+                
                 combined_df.drop(column, axis=1, inplace=True)  # Drop the year-specific column
+        
+                
 
 
 
