@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import matplotlib.ticker as mtick
+from PyPDF2 import PdfMerger
 
 
 membership_stats = ['LevelOrdealYouthFinal',
@@ -376,6 +377,30 @@ def all_reports(sorted_df):
                 plt.show()
                 pdf.savefig(fig)
             
+def combine_reports_into_pdf(root_folder, output_pdf):
+    # Create a PdfMerger object
+    pdf_merger = PdfMerger()
+
+    # Iterate through section folders inside the "all_reports" folder
+    for section_folder in sorted(os.listdir(root_folder)):
+        section_path = os.path.join(root_folder, section_folder)
+        
+        # Check if it's a folder (to ignore any files)
+        if os.path.isdir(section_path):
+            # Iterate through lodge report PDFs in each section folder
+            for lodge_report in sorted(os.listdir(section_path)):
+                if lodge_report.endswith('.pdf'):
+                    lodge_report_path = os.path.join(section_path, lodge_report)
+                    print(f'Adding {lodge_report_path} to the combined PDF.')
+                    # Append each lodge report to the merger
+                    with open(lodge_report_path, 'rb') as f:
+                        pdf_merger.append(f)
+
+    # Write the combined PDF to the output file
+    with open(output_pdf, 'wb') as output_file:
+        pdf_merger.write(output_file)
+
+    print(f'Combined PDF saved as {output_pdf}')
 
 # Load each CSV into a DataFrame and store in a list
 dataframes = [pd.read_csv(file) for file in file_paths]
@@ -393,7 +418,14 @@ isolate_sections(sorted_df)
 sorted_df.to_csv('sorted.csv')
     
 #all_reports(sorted_df)
+
+#Generate all lodge reports
 iterate_sections_for_lodge_reports()
+
+#create massive PDF for printing
+root_folder = 'all_reports/lodge_reports'
+output_pdf = 'all_reports/combined_lodge_reports.pdf'
+combine_reports_into_pdf(root_folder, output_pdf)
     
 
 
