@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import matplotlib.ticker as mtick
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader
+from PyPDF2.errors import PdfReadError, EmptyFileError
+
 
 
 membership_stats = ['LevelOrdealYouthFinal',
@@ -235,149 +237,114 @@ def generate_lodge_report(LodgeName, lodge_data_df, folder_path, pdf):
     pdf.savefig(fig)
     plt.close(fig)  # Close the figure to avoid displaying it in interactive environments
 
-"""
-def get_five_num_summary(arr):
+def section_reports(sorted_df):
+    # Group by section and year, removing unnecessary columns
+    sections = sorted_df.groupby(['Year', 'Section']).sum().reset_index()  # Ensure Year remains after grouping
     
-    min_val = np.min(arr)
-    one_qr_val = np.percentile(arr, 25)
-    med_val = np.median(arr)
-    thr_qr_val = np.percentile(arr, 75)
-    max_val = np.max(arr)
-    
-    return (min_val, one_qr_val, med_val, thr_qr_val, max_val)
-"""
-
-def all_reports(sorted_df):
-    
-    """sections = sorted_df.groupby(['Section'])[
-    ['Item8CapitalContributionsCash', 'PmpOverallPoints', 'Item8CapitalContributionsMaterial' ,'Item8EndowmentContributions', 
-     'Item8FosContributions', 'LevelOrdealYouthFinal', 'LevelOrdealYoungAdultFinal', 'LevelOrdealAdultFinal', 
-     'LevelBrotherhoodYouthFinal', 'LevelBrotherhoodYoungAdultFinal', 'LevelBrotherhoodAdultFinal', 'LevelVigilYouthFinal', 
-     'LevelVigilYoungAdultFinal', 'LevelVigilAdultFinal', 'InductedOrdealYouthFinal', 'InductedOrdealAdultFinal', 
-     'InductedBrotherhoodYouthFinal', 'InductedBrotherhoodAdultFinal', 'InductedVigilYouthFinal', 'InductedVigilAdultFinal', 
-     'ElectedCurrentYouthFinal', 'ElectedCurrentAdultFinal', 'ElectedPreviousYouthFinal', 'ElectedPreviousAdultFinal', 
-     'UnitCountFinal', 'Item1ElectionsConducted', 'Item1ElectionsNoEligibleScouts', 'Item1VisitsConducted', 'Item3ActivatedYouth', 
-     'Item9ServiceHours', 'TotalMembers', 'InductedOrdealTotal', 'ElectedTotal', 'LevelOrdealTotal', 'LevelBrotherhoodTotal', 
-     'LevelVigilTotal', 'LevelYouthTotal', 'LevelYoungAdultTotal', 'LevelAdultTotal']
-    ].sum().reset_index()"""
-    
-    sections = sorted_df.groupby(['Year', 'Section']).sum().reset_index()
-    # Assuming 'sections' is your DataFrame
-    columns_to_delete = ['CharterApplicationId', 'Item8EndowmentContributions', 'Item8FosContributions', 'CouncilNumber', 'SequenceNumber', 'Timestamp', 'DateSubmitted', 'PmpOverallLevel', 'LodgeName', 'Item8CapitalContributionsCash', 'Item8CapitalContributionsMaterial']
+    columns_to_delete = ['CharterApplicationId', 'Item8EndowmentContributions', 'Item8FosContributions', 
+                         'CouncilNumber', 'SequenceNumber', 'Timestamp', 'DateSubmitted', 
+                         'PmpOverallLevel', 'LodgeName', 'Item8CapitalContributionsCash', 
+                         'Item8CapitalContributionsMaterial']
     sections = sections.drop(columns=columns_to_delete, errors='ignore')
 
-    
-    
-    
-    folder_path = f'all_reports\section_data'
+    # Compute additional columns
+    sections['TotalMembers'] = sections[['InductedOrdealYouthFinal', 'InductedOrdealAdultFinal']].sum(axis=1)
+    sections['ElectionRate'] = (sections['Item1ElectionsConducted'] + sections['Item1ElectionsNoEligibleScouts']) / sections['UnitCountFinal']
+    sections['InductionRate'] = sections['InductedOrdealTotal'] / sections['ElectedTotal']
+    sections['ActivationRate'] = sections['Item3ActivatedYouth'] / sections['InductedOrdealTotal']
+
+    # Fill NaN values that may arise during computation to avoid invalid operations
+    sections['ElectionRate'].fillna(0, inplace=True)
+    sections['InductionRate'].fillna(0, inplace=True)
+    sections['ActivationRate'].fillna(0, inplace=True)
+
+    # Summing levels
+    sections['LevelOrdealTotal'] = sections[['LevelOrdealYouthFinal', 'LevelOrdealYoungAdultFinal', 'LevelOrdealAdultFinal']].sum(axis=1)
+    sections['LevelBrotherhoodTotal'] = sections[['LevelBrotherhoodYouthFinal', 'LevelBrotherhoodYoungAdultFinal', 'LevelBrotherhoodAdultFinal']].sum(axis=1)
+    sections['LevelVigilTotal'] = sections[['LevelVigilYouthFinal', 'LevelVigilYoungAdultFinal', 'LevelVigilAdultFinal']].sum(axis=1)
+    sections['LevelYouthTotal'] = sections[['LevelOrdealYouthFinal', 'LevelBrotherhoodYouthFinal', 'LevelVigilYouthFinal']].sum(axis=1)
+    sections['LevelYoungAdultTotal'] = sections[['LevelOrdealYoungAdultFinal', 'LevelBrotherhoodYoungAdultFinal', 'LevelVigilYoungAdultFinal']].sum(axis=1)
+    sections['LevelAdultTotal'] = sections[['LevelOrdealAdultFinal', 'LevelBrotherhoodAdultFinal', 'LevelVigilAdultFinal']].sum(axis=1)
+
+    # Iterate over section files
+    folder_path = f'all_reports/section_data'
     file_list = os.listdir(folder_path)
+    
     for current_file in file_list:
+        section_name = current_file[:-4].split('_')[1][1:]
+        # Filter the data for the specific section
+        section_data = sorted_df[sorted_df['Section'] == section_name]
         
+        if section_data.empty:
+            print(f"Section {section_name} has no data. Skipping.")
+            continue  # Skip to the next file if no data for the section
+
+        # Gather data for plotting
         election_rate_year = []
         induction_rate_year = []
         activation_rate_year = []
-        section_df = pd.read_csv(f'{folder_path}\{current_file}')
-        for year in section_df['Year'].unique():
-            election_rate_vals = section_df[section_df['Year'] == year]['ElectionRate'].to_numpy()
-            induction_rate_vals = section_df[section_df['Year'] == year]['InductionRate'].to_numpy()
-            activation_rate_vals = section_df[section_df['Year'] == year]['ActivationRate'].to_numpy()
-            
-            election_rate_year += [election_rate_vals]
-            induction_rate_year += [induction_rate_vals]
-            activation_rate_year += [activation_rate_vals]
-                
-                
-        sections['TotalMembers'] = sections[membership_stats].sum(axis=1)
-        sections['ElectionRate'] = (sections['Item1ElectionsConducted'] + sections['Item1ElectionsNoEligibleScouts']) / sections['UnitCountFinal'] 
-        sections['InductedOrdealTotal'] = sections[['InductedOrdealYouthFinal' ,'InductedOrdealAdultFinal']].sum(axis=1)
-        sections['ElectedTotal'] = sections[['ElectedCurrentYouthFinal' ,'ElectedCurrentAdultFinal']].sum(axis=1)
-        sections['InductionRate'] = sections['InductedOrdealTotal'] / sections['ElectedTotal']
-        sections['ActivationRate'] = sections['Item3ActivatedYouth'] / sections['InductedOrdealTotal'] 
-        sections['LevelOrdealTotal'] = sections[['LevelOrdealYouthFinal' ,'LevelOrdealYoungAdultFinal' ,'LevelOrdealAdultFinal']].sum(axis=1)
-        sections['LevelBrotherhoodTotal'] = sections[['LevelBrotherhoodYouthFinal' ,'LevelBrotherhoodYoungAdultFinal' ,'LevelBrotherhoodAdultFinal']].sum(axis=1)
-        sections['LevelVigilTotal'] = sections[['LevelVigilYouthFinal' ,'LevelVigilYoungAdultFinal' ,'LevelVigilAdultFinal']].sum(axis=1)
-        sections['LevelYouthTotal'] = sections[['LevelOrdealYouthFinal' ,'LevelBrotherhoodYouthFinal' ,'LevelVigilYouthFinal']].sum(axis=1)
-        sections['LevelYoungAdultTotal'] = sections[['LevelOrdealYoungAdultFinal' ,'LevelBrotherhoodYoungAdultFinal' ,'LevelVigilYoungAdultFinal']].sum(axis=1)
-        sections['LevelAdultTotal'] = sections[['LevelOrdealAdultFinal' ,'LevelBrotherhoodAdultFinal' ,'LevelVigilAdultFinal']].sum(axis=1)
         
-        
-        #sections.plot('Year', )
-        
-        lodges_region_str = str(sections['Region'][sections.index[0]]).strip()
-        lodges_section_str = sections['Section'][sections.index[0]]
-        
-        for section in sections['Section'].unique():
-            with PdfPages(f'all_reports\section_reports\G{str(section).strip()}_Visual_Report.pdf') as pdf:
-                section_df = sections[sections['Section'] == section]
-                # Create a figure and a 2x2 grid of subplots, plus one large plot at the bottom
-                fig, axs = plt.subplots(3, 2, figsize=(11, 8.5))  # 3 rows, 2 columns
-                fig.suptitle(f'{lodges_region_str[0]}{section}\'s Section PMP Visual Report', fontsize=16)
+        for year in section_data['Year'].unique():
+            election_rate_vals = section_data[section_data['Year'] == year]['ElectionRate'].to_numpy()
+            induction_rate_vals = section_data[section_data['Year'] == year]['InductionRate'].to_numpy()
+            activation_rate_vals = section_data[section_data['Year'] == year]['ActivationRate'].to_numpy()
 
-            
-                section_df.plot(x='Year', y=['ElectionRate'], ax=axs[0, 0])
-                section_df.plot(x='Year', y=['InductionRate'], ax=axs[1, 0])
-                section_df.plot(x='Year', y=['ActivationRate'], ax=axs[2, 0])
-                
-                ax00 = axs[0,0].twinx()
-                ax10 = axs[1,0].twinx()
-                ax20 = axs[2,0].twinx()
-                
-                boxplot_positions = section_df['Year'].unique()
-                print(boxplot_positions)
-                #print(f'Election Rate {election_rate_year}')
-                for i in election_rate_year:
-                    print(i)
-                    print('new row')
-                print(len(election_rate_year))  # Check number of rows in election_rate_year
-                print(len(boxplot_positions))   # Check number of positions
+            election_rate_year.append(election_rate_vals)
+            induction_rate_year.append(induction_rate_vals)
+            activation_rate_year.append(activation_rate_vals)
 
-                #print(f'Induction Rate {np.shape(induction_rate_year)}')
-                #print(f'Activation Rate {np.shape(activation_rate_year)}')
-                
-                ax00.boxplot(election_rate_year, positions=boxplot_positions, widths=0.4)
-                ax10.boxplot(induction_rate_year, positions=boxplot_positions, widths=0.4)
-                ax20.boxplot(activation_rate_year, positions=boxplot_positions, widths=0.4)
-                
-                section_df.plot(x='Year', y=['PmpOverallPoints'], ax=axs[0, 1])
-                section_df.plot(x='Year', y=['LevelOrdealTotal','LevelBrotherhoodTotal','LevelVigilTotal'], kind='bar', stacked=True, ax=axs[1, 1])
-                section_df.plot(x='Year', y=['LevelYouthTotal','LevelYoungAdultTotal','LevelAdultTotal'], kind='bar', stacked=True, ax=axs[2, 1])
-                
-                axs[0,0].set_ylabel('Rate (%)')
-                axs[1,0].set_ylabel('Rate (%)')
-                axs[2,0].set_ylabel('Rate (%)')
-                axs[0,1].set_ylabel('Members')
-                axs[1,1].set_ylabel('Members')
-                
-                axs[0,0].set_title('Election Rate')
-                axs[1,0].set_title('Induction Rate')
-                axs[2,0].set_title('Activation Rate')
-                axs[1,1].set_title('Membership by Honor')
-                axs[2,1].set_title('Membership by Age')
-                
-                axs[0,0].xaxis.set_major_locator(mtick.MaxNLocator(nbins=5))  # Set the maximum number of ticks to 5
-                axs[0,1].xaxis.set_major_locator(mtick.MaxNLocator(nbins=5))  # Set the maximum number of ticks to 5
-                axs[1,0].xaxis.set_major_locator(mtick.MaxNLocator(nbins=5))  # Set the maximum number of ticks to 5
-                axs[1,1].xaxis.set_major_locator(mtick.MaxNLocator(nbins=5))  # Set the maximum number of ticks to 5
-                
-                axs[0,0].legend(loc='upper left', bbox_to_anchor=(1,1))
-                axs[0,1].legend(loc='upper left', bbox_to_anchor=(1,1))
-                axs[1,0].legend(loc='upper left', bbox_to_anchor=(1,1))
-                axs[1,1].legend(loc='upper left', bbox_to_anchor=(1,1))
-                
-                axs[0,0].set_ylim(0, None)
-                axs[0,1].set_ylim(0, None)
-                axs[1,0].set_ylim(0, None)
-                #axs[1,1].set_ylim(0, None)
-                axs[2,0].set_ylim(0, None)
-                
-                axs[0, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))  # xmax=1 for percentage from 0 to 100
-                axs[1, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))  # xmax=1 for percentage from 0 to 100
-                axs[2, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))  # xmax=1 for percentage from 0 to 100
-                #sections.to_csv(f'section_G{section}.csv')
-                plt.show()
-                pdf.savefig(fig)
-            
-def combine_reports_into_pdf(root_folder, output_pdf):
+        # For weighted average lines
+        weighted_avg_election_rate = sections.groupby('Year').apply(lambda x: np.average(x['ElectionRate'], weights=x['TotalMembers']))
+        weighted_avg_induction_rate = sections.groupby('Year').apply(lambda x: np.average(x['InductionRate'], weights=x['TotalMembers']))
+        weighted_avg_activation_rate = sections.groupby('Year').apply(lambda x: np.average(x['ActivationRate'], weights=x['TotalMembers']))
+
+        # Create plots
+        fig, axs = plt.subplots(3, 2, figsize=(11, 8.5))  # 3 rows, 2 columns
+        fig.suptitle(f'G{section_name}\'s Section PMP Visual Report', fontsize=16)
+        
+        boxplot_positions = section_data['Year'].unique()
+
+        # Election Rate Plot
+        axs[0, 0].boxplot(election_rate_year, positions=boxplot_positions, widths=0.4)
+        axs[0, 0].plot(boxplot_positions, weighted_avg_election_rate, color='blue', label='Weighted Avg Election Rate')
+        axs[0, 0].set_title('Election Rate')
+        axs[0, 0].set_ylabel('Rate (%)')
+        axs[0, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))
+
+        # Induction Rate Plot
+        axs[1, 0].boxplot(induction_rate_year, positions=boxplot_positions, widths=0.4)
+        axs[1, 0].plot(boxplot_positions, weighted_avg_induction_rate, color='blue', label='Weighted Avg Induction Rate')
+        axs[1, 0].set_title('Induction Rate')
+        axs[1, 0].set_ylabel('Rate (%)')
+        axs[1, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))
+
+        # Activation Rate Plot
+        axs[2, 0].boxplot(activation_rate_year, positions=boxplot_positions, widths=0.4)
+        axs[2, 0].plot(boxplot_positions, weighted_avg_activation_rate, color='blue', label='Weighted Avg Activation Rate')
+        axs[2, 0].set_title('Activation Rate')
+        axs[2, 0].set_ylabel('Rate (%)')
+        axs[2, 0].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1))
+
+        # Additional plots
+        section_by_year = section_data.groupby('Year').sum().reset_index()  # Ensure Year is present
+        section_by_year.plot(x='Year', y=['PmpOverallPoints'], ax=axs[0, 1])
+        section_by_year.plot(x='Year', y=['LevelOrdealTotal', 'LevelBrotherhoodTotal', 'LevelVigilTotal'], kind='bar', stacked=True, ax=axs[1, 1])
+        section_by_year.plot(x='Year', y=['LevelYouthTotal', 'LevelYoungAdultTotal', 'LevelAdultTotal'], kind='bar', stacked=True, ax=axs[2, 1])
+
+        # Set labels and titles
+        axs[0, 1].set_ylabel('Points')
+        axs[1, 1].set_ylabel('Members')
+        axs[2, 1].set_ylabel('Members')
+        axs[1, 1].set_title('Membership by Honor')
+        axs[2, 1].set_title('Membership by Age')
+
+        # Adjust layout and close figure after saving
+        plt.tight_layout()
+        with PdfPages(f'all_reports/section_reports/G{str(section_name).strip()}_Visual_Report.pdf') as pdf:
+            pdf.savefig(fig)
+            plt.close(fig)  # Close figure to avoid memory issues
+
+def combine_lodge_reports_into_pdf(root_folder, output_pdf):
     # Create a PdfMerger object
     pdf_merger = PdfMerger()
 
@@ -401,7 +368,52 @@ def combine_reports_into_pdf(root_folder, output_pdf):
         pdf_merger.write(output_file)
 
     print(f'Combined PDF saved as {output_pdf}')
+import os
+from PyPDF2 import PdfMerger, PdfReader
+from PyPDF2.errors import PdfReadError, EmptyFileError
+import re
 
+def combine_section_reports_into_pdf(section_root_folder, section_output_pdf):
+    # Initialize a PdfMerger object
+    pdf_merger = PdfMerger()
+
+    # Get all PDF files in the section reports folder
+    pdf_files = [file_name for file_name in os.listdir(section_root_folder) if file_name.endswith('.pdf')]
+
+    # Sort by numeric part of the file name (e.g., 'g1', 'g2', etc.)
+    def extract_section_number(file_name):
+        match = re.search(r'g(\d+)', file_name)
+        return int(match.group(1)) if match else float('inf')  # Default to infinity if no match
+
+    pdf_files_sorted = sorted(pdf_files, key=extract_section_number)
+
+    # Loop through sorted PDF files
+    for file_name in pdf_files_sorted:
+        file_path = os.path.join(section_root_folder, file_name)
+
+        # Check if the file is not empty
+        if os.path.getsize(file_path) == 0:
+            print(f"Skipping empty file: {file_path}")
+            continue
+
+        # Try to append the PDF, and handle any errors (like corrupt PDFs)
+        try:
+            with open(file_path, 'rb') as pdf_file:
+                reader = PdfReader(pdf_file)
+                if len(reader.pages) == 0:
+                    print(f"Skipping empty PDF file: {file_path}")
+                    continue
+                pdf_merger.append(pdf_file)
+        except (PdfReadError, EmptyFileError) as e:
+            print(f"Skipping corrupt or unreadable file: {file_path}, Error: {e}")
+            continue
+    
+    # Write the combined PDF to the specified output path
+    with open(section_output_pdf, 'wb') as output_pdf:
+        pdf_merger.write(output_pdf)
+
+    print(f"Combined PDF saved as: {section_output_pdf}")
+ 
 # Load each CSV into a DataFrame and store in a list
 dataframes = [pd.read_csv(file) for file in file_paths]
 
@@ -417,20 +429,19 @@ isolate_sections(sorted_df)
 
 sorted_df.to_csv('sorted.csv')
     
-#all_reports(sorted_df)
+#section_reports(sorted_df)
 
 #Generate all lodge reports
-iterate_sections_for_lodge_reports()
+#iterate_sections_for_lodge_reports()
 
 #create massive PDF for printing
-root_folder = 'all_reports/lodge_reports'
-output_pdf = 'all_reports/combined_lodge_reports.pdf'
-combine_reports_into_pdf(root_folder, output_pdf)
-    
+lodge_root_folder = 'all_reports/lodge_reports'
+lodge_output_pdf = 'all_reports/combined_lodge_reports.pdf'
+#combine_reports_into_pdf(root_folder, output_pdf)
 
-
-
-
+section_root_folder = 'all_reports/section_reports'
+section_output_pdf = 'all_reports/combined_section_reports.pdf'
+combine_section_reports_into_pdf(section_root_folder, section_output_pdf)
 
 # - - - - For shits and giggles - - - - -
 # count the number of scouts across the 
