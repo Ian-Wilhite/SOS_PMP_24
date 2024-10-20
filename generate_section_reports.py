@@ -20,11 +20,11 @@ membership_stats = ['LevelOrdealYouthFinal',
                     'LevelVigilAdultFinal']
 
 file_paths = [
-    "Gateway_PMP_Data_2019.csv",
-    "Gateway_PMP_Data_2020.csv",
-    "Gateway_PMP_Data_2021.csv",
-    "Gateway_PMP_Data_2022.csv",
-    "Gateway_PMP_Data_2023.csv"
+    "input_files\Gateway_PMP_Data_2019.csv",
+    "input_files\Gateway_PMP_Data_2020.csv",
+    "input_files\Gateway_PMP_Data_2021.csv",
+    "input_files\Gateway_PMP_Data_2022.csv",
+    "input_files\Gateway_PMP_Data_2023.csv"
 ]
 
 def clean_up_data(dataframes, council_data):
@@ -109,7 +109,7 @@ def consolidate_data(dataframes, council_data): # dataframe of consolidated valu
     sorted_df['TotalMembers'] = sorted_df[membership_stats].sum(axis=1)
     sorted_df['ElectionRate'] = (sorted_df['Item1ElectionsConducted'] + sorted_df['Item1ElectionsNoEligibleScouts']) / sorted_df['UnitCountFinal'] 
     sorted_df['InductedOrdealTotal'] = sorted_df[['InductedOrdealYouthFinal' ,'InductedOrdealAdultFinal']].sum(axis=1)
-    sorted_df['ElectedTotal'] = sorted_df[['ElectedCurrentYouthFinal' ,'ElectedCurrentAdultFinal']].sum(axis=1)
+    sorted_df['ElectedTotal'] = sorted_df[['ElectedCurrentYouthFinal' ,'ElectedCurrentAdultFinal', 'ElectedPreviousYouthFinal', 'ElectedPreviousAdultFinal']].sum(axis=1)
     sorted_df['InductionRate'] = sorted_df['InductedOrdealTotal'] / sorted_df['ElectedTotal']
     sorted_df['ActivationRate'] = sorted_df['Item3ActivatedYouth'] / sorted_df['InductedOrdealTotal'] 
     sorted_df['LevelOrdealTotal'] = sorted_df[['LevelOrdealYouthFinal' ,'LevelOrdealYoungAdultFinal' ,'LevelOrdealAdultFinal']].sum(axis=1)
@@ -252,7 +252,7 @@ def section_reports(sorted_df):
     sections['ElectionRate'] = (sections['Item1ElectionsConducted'] + sections['Item1ElectionsNoEligibleScouts']) / sections['UnitCountFinal']
     sections['InductionRate'] = sections['InductedOrdealTotal'] / sections['ElectedTotal']
     sections['ActivationRate'] = sections['Item3ActivatedYouth'] / sections['InductedOrdealTotal']
-
+    
     # Fill NaN values that may arise during computation to avoid invalid operations
     sections['ElectionRate'].fillna(0, inplace=True)
     sections['InductionRate'].fillna(0, inplace=True)
@@ -279,6 +279,12 @@ def section_reports(sorted_df):
             print(f"Section {section_name} has no data. Skipping.")
             continue  # Skip to the next file if no data for the section
 
+        cap_threshold = 1.5  # 150%
+
+        section_data.loc[:, 'ElectionRate'] = section_data['ElectionRate'].apply(lambda x: min(x, cap_threshold))
+        section_data.loc[:, 'InductionRate'] = section_data['InductionRate'].apply(lambda x: min(x, cap_threshold))
+        section_data.loc[:, 'ActivationRate'] = section_data['ActivationRate'].apply(lambda x: min(x, cap_threshold))
+                
         # Gather data for plotting
         election_rate_year = []
         induction_rate_year = []
@@ -368,9 +374,7 @@ def combine_lodge_reports_into_pdf(root_folder, output_pdf):
         pdf_merger.write(output_file)
 
     print(f'Combined PDF saved as {output_pdf}')
-import os
-from PyPDF2 import PdfMerger, PdfReader
-from PyPDF2.errors import PdfReadError, EmptyFileError
+
 import re
 
 def combine_section_reports_into_pdf(section_root_folder, section_output_pdf):
@@ -419,7 +423,7 @@ dataframes = [pd.read_csv(file) for file in file_paths]
 
 # Alternatively, store in a dictionary for easier reference by year
 dataframes_by_year = {year: pd.read_csv(file) for year, file in zip(range(2019, 2024), file_paths)}
-council_data = pd.read_csv("Gateway_PMP_Data_Councils.csv")
+council_data = pd.read_csv("input_files\Gateway_PMP_Data_Councils.csv")
 
 clean_up_data(dataframes, council_data)
 
@@ -429,7 +433,7 @@ isolate_sections(sorted_df)
 
 sorted_df.to_csv('sorted.csv')
     
-#section_reports(sorted_df)
+section_reports(sorted_df)
 
 #Generate all lodge reports
 #iterate_sections_for_lodge_reports()
