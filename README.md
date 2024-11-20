@@ -42,6 +42,11 @@ Each lodge's report (PDF) includes:
 - Membership breakdown by age (Youth, Young Adult, Adult).
 - Metrics such as Election Rate, Induction Rate, and Activation Rate over time.
 - Total membership statistics.
+Sample Lodge Report:
+[View the Project Documentation](all_reports/lodge_reports/Section_G3/Netopalis%20Sipo%20Schipinachk_Visual_Report.pdf)
+Sample Section Report:
+[View the Project Documentation](all_reports/section_reports/Section_G3_Visual_Report.pdf)
+
 
 ---
 
