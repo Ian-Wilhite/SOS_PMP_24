@@ -4,6 +4,23 @@ This project consolidates and visualizes lodge data across the country and gener
 
 ---
 
+## Table of Contents
+1. [User Guide: Accessing Files and Reports on GitHub](#user-guide-accessing-files-and-reports-on-github)
+   - [Repository Overview](#1-repository-overview)
+   - [Steps to Access Reports](#2-steps-to-access-reports)
+   - [Generated Report Structure](#3-generated-report-structure)
+2. [Developer Guide: How the Code Works](#developer-guide-how-the-code-works)
+   - [Data Cleaning and Consolidation](#1-data-cleaning-and-consolidation)
+   - [Data Export by Section](#2-data-export-by-section)
+   - [Report Generation](#3-report-generation)
+   - [Error Handling](#4-error-handling)
+   - [Dependencies](#5-dependencies)
+   - [Extending the Code](#6-extending-the-code)
+3. [Contact](#contact)
+4. [Contributions](#contributions)
+
+---
+
 ## User Guide: Accessing Files and Reports on GitHub
 
 ### 1. Repository Overview
@@ -68,7 +85,17 @@ To add new features or adjust existing ones:
 ---
 
 ## Contact
-For questions or support, you can contact me at iwilhite@netopalis.org.
+For questions or support, please contact the project maintainer or submit an issue in the GitHub repository.
 
-YIS
-Ian
+---
+
+## Contributions
+We welcome contributions from the community! Here's how you can help:
+1. **Report Bugs:** Open an issue in the repository with details about the problem.
+2. **Suggest Features:** Submit ideas for improvements or new features.
+3. **Submit Pull Requests:** 
+   - Fork the repository and create a feature branch.
+   - Make your changes and commit with clear messages.
+   - Submit a pull request for review.
+
+Thank you for your interest in improving this project!
