@@ -42,8 +42,10 @@ Each lodge's report (PDF) includes:
 - Membership breakdown by age (Youth, Young Adult, Adult).
 - Metrics such as Election Rate, Induction Rate, and Activation Rate over time.
 - Total membership statistics.
+
 Sample Lodge Report:
 [View the Project Documentation](all_reports/lodge_reports/Section_G3/Netopalis%20Sipo%20Schipinachk_Visual_Report.pdf)
+
 Sample Section Report:
 [View the Project Documentation](all_reports/section_reports/Section_G3_Visual_Report.pdf)
 
@@ -89,11 +91,6 @@ To add new features or adjust existing ones:
 
 ---
 
-## Contact
-For questions or support, please contact the project maintainer or submit an issue in the GitHub repository.
-
----
-
 ## Contributions
 We welcome contributions from the community! Here's how you can help:
 1. **Report Bugs:** Open an issue in the repository with details about the problem.
@@ -103,4 +100,8 @@ We welcome contributions from the community! Here's how you can help:
    - Make your changes and commit with clear messages.
    - Submit a pull request for review.
 
-Thank you for your interest in improving this project!
+## Contact
+For questions or support, you can contact me at iwilhite@netopalis.org 
+
+WWW
+Ian
