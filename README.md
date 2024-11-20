@@ -68,4 +68,7 @@ To add new features or adjust existing ones:
 ---
 
 ## Contact
-For questions or support, please contact the project maintainer or submit an issue in the GitHub repository.
+For questions or support, you can contact me at iwilhite@netopalis.org.
+
+YIS
+Ian
