@@ -375,8 +375,6 @@ def combine_lodge_reports_into_pdf(root_folder, output_pdf):
 
     print(f'Combined PDF saved as {output_pdf}')
 
-import re
-
 def combine_section_reports_into_pdf(section_root_folder, section_output_pdf):
     # Initialize a PdfMerger object
     pdf_merger = PdfMerger()
@@ -429,23 +427,49 @@ clean_up_data(dataframes, council_data)
 
 sorted_df = consolidate_data(dataframes, council_data)
 
-isolate_sections(sorted_df)
+# Check for NaN and Infinite values
+#print(sorted_df.isnull().sum())  # Check for NaN values
 
-sorted_df.to_csv('sorted.csv')
+sorted_df = sorted_df.dropna()  # Drop rows with any NaN values
+
+numeric_df = sorted_df.select_dtypes(include=[np.number])
+
+
+plt.matshow(numeric_df.corr())
+continuous_features = numeric_df.columns
+#plt.xticks(range(len(continuous_features)), continuous_features, rotation="45")
+#plt.yticks(range(len(continuous_features)), continuous_features, rotation="45")
+plt.colorbar()
+plt.show()
+
+for i, col in enumerate(numeric_df.columns):
+    print(f'{i}: {col}')
+# sorted_df.describe()
+
+# plt.matshow(sorted_df.corr())
+# continuous_features = sorted_df.describe().columns
+# plt.xticks(range(len(continuous_features)), continuous_features, rotation="45")
+# plt.yticks(range(len(continuous_features)), continuous_features, rotation="45")
+# plt.colorbar()
+# plt.show()
+
+# isolate_sections(sorted_df)
+
+# sorted_df.to_csv('sorted.csv')
     
-section_reports(sorted_df)
+# section_reports(sorted_df)
 
-#Generate all lodge reports
-#iterate_sections_for_lodge_reports()
+# #Generate all lodge reports
+# #iterate_sections_for_lodge_reports()
 
-#create massive PDF for printing
-lodge_root_folder = 'all_reports/lodge_reports'
-lodge_output_pdf = 'all_reports/combined_lodge_reports.pdf'
-#combine_reports_into_pdf(root_folder, output_pdf)
+# #create massive PDF for printing
+# lodge_root_folder = 'all_reports/lodge_reports'
+# lodge_output_pdf = 'all_reports/combined_lodge_reports.pdf'
+# #combine_reports_into_pdf(root_folder, output_pdf)
 
-section_root_folder = 'all_reports/section_reports'
-section_output_pdf = 'all_reports/combined_section_reports.pdf'
-combine_section_reports_into_pdf(section_root_folder, section_output_pdf)
+# section_root_folder = 'all_reports/section_reports'
+# section_output_pdf = 'all_reports/combined_section_reports.pdf'
+# combine_section_reports_into_pdf(section_root_folder, section_output_pdf)
 
 # - - - - For shits and giggles - - - - -
 # count the number of scouts across the 
