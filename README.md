@@ -44,10 +44,10 @@ Each lodge's report (PDF) includes:
 - Total membership statistics.
 
 Sample Section Report:
-[View the Project Documentation](resources/G3_Visual_Report-1.png)
+![View the Project Documentation](resources/G3_Visual_Report-1.png)
 
 Sample Lodge Report:
-[View the Project Documentation](resources/Netopalis%20Sipo%20Schipinachk_Visual_Report-1.png)
+![View the Project Documentation](resources/Netopalis%20Sipo%20Schipinachk_Visual_Report-1.png)
 
 
 ---
